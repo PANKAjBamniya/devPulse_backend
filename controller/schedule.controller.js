@@ -171,7 +171,7 @@ const runSchedule = async (schedule) => {
 
         // Safety check
         if (!content || content.trim().length === 0) {
-            throw new Error("OpenAI returned empty content");
+            throw new Error("GeminiAI returned empty content");
         }
 
         // Create In DB
@@ -184,7 +184,6 @@ const runSchedule = async (schedule) => {
         });
 
         //  (OPTIONAL) LinkedIn post — disabled in test
-
 
         await postToLinkedIn({
             text: content,
@@ -212,9 +211,5 @@ const runSchedule = async (schedule) => {
         }
     }
 };
-
-
-
-
 
 module.exports = { createSchedule, getMySchedule, toggleSchedule, updateSchedule, runSchedule }
