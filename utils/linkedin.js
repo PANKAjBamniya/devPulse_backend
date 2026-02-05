@@ -1,0 +1,28 @@
+const axios = require("axios");
+
+const postToLinkedIn = async ({ text, accessToken, authorUrn }) => {
+    return axios.post(
+        "https://api.linkedin.com/v2/ugcPosts",
+        {
+            author: authorUrn,
+            lifecycleState: "PUBLISHED",
+            specificContent: {
+                "com.linkedin.ugc.ShareContent": {
+                    shareCommentary: { text },
+                    shareMediaCategory: "NONE",
+                },
+            },
+            visibility: {
+                "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC",
+            },
+        },
+        {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "X-Restli-Protocol-Version": "2.0.0",
+            },
+        }
+    );
+};
+
+module.exports = { postToLinkedIn };

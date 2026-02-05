@@ -78,15 +78,20 @@ const linkedInCallback = async (req, res) => {
         }
 
 
-        const token = jwt.sign({ name: user.name, email: user.email, avatar: user.avatar }, process.env.JWT_SECRET)
+        const token = jwt.sign(
+            {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                avatar: user.avatar
+            }
+            , process.env.JWT_SECRET)
 
         res.cookie("token", token, {
             httpOnly: true,
-            secure: true,
+            secure: false,
             sameSite: "lax",
         });
-
-
         res.redirect('http://localhost:5173')
 
     } catch (error) {
@@ -100,9 +105,6 @@ const linkedInCallback = async (req, res) => {
 const getUser = async (req, res) => {
     try {
         const token = req.cookies?.token;
-
-        console.log(req.cookie)
-
         if (!token) {
             return res.status(401).json({
                 success: false,
