@@ -22,7 +22,10 @@ app.use(
 
 // test route
 app.get('/', (req, res) => {
-    res.send('Backend working');
+    res.json({
+        msg: "Dev_pulse Working",
+        err: {}
+    });
 });
 
 // require("./cron/test.cron")
