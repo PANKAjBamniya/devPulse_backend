@@ -143,15 +143,8 @@ const runSchedule = async (schedule) => {
     let post;
 
     try {
-        console.log('🔍 Running schedule for user:', schedule.user);
 
         const user = await User.findById(schedule.user);
-
-        // 🔥 DEBUG: Log the entire user object
-        console.log('👤 User found:', !!user);
-        console.log('📱 User LinkedIn object:', user?.linkedin);
-        console.log('🔑 Has accessToken:', !!user?.linkedin?.accessToken);
-        console.log('🎯 Has authorUrn:', !!user?.linkedin?.authorUrn);
 
         if (!user) {
             throw new Error("User not found");
@@ -170,13 +163,6 @@ const runSchedule = async (schedule) => {
         }
 
         const { accessToken, expiresAt, authorUrn } = user.linkedin;
-
-        console.log('✅ LinkedIn data retrieved:', {
-            hasToken: !!accessToken,
-            hasUrn: !!authorUrn,
-            expiresAt,
-            isExpired: Date.now() > new Date(expiresAt).getTime()
-        });
 
         if (Date.now() > new Date(expiresAt).getTime()) {
             throw new Error("LinkedIn token expired – reconnect required");
@@ -216,9 +202,6 @@ const runSchedule = async (schedule) => {
             scheduledAt: new Date(),
         });
 
-        console.log("📤 Posting to LinkedIn...");
-        console.log("Author URN:", authorUrn);
-
         await postToLinkedIn({
             text: content,
             accessToken,
@@ -232,7 +215,7 @@ const runSchedule = async (schedule) => {
         schedule.lastRunAt = new Date();
         await schedule.save();
 
-        console.log("✅ LinkedIn post published:", post._id);
+        console.log("✅ LinkedIn post published:");
 
     } catch (error) {
         console.error("❌ Post failed:", error.message);

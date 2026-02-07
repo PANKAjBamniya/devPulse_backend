@@ -12,31 +12,40 @@ cron.schedule("* * * * *", async () => {
     for (const schedule of schedules) {
         const now = moment().tz(schedule.timezone);
 
-        // Convert schedule time to 24h
         let hour = parseInt(schedule.time.hour);
         const minute = parseInt(schedule.time.minute);
 
         if (schedule.time.period === "PM" && hour !== 12) hour += 12;
         if (schedule.time.period === "AM" && hour === 12) hour = 0;
 
-        const isSameTime =
-            now.hour() === hour && now.minute() === minute;
+        const scheduledMoment = moment()
+            .tz(schedule.timezone)
+            .hour(hour)
+            .minute(minute)
+            .second(0);
 
-        if (!isSameTime) continue;
+        const diffMinutes = Math.abs(now.diff(scheduledMoment, "minutes"));
+        if (diffMinutes > 1) continue;
 
-        // Avoid duplicate run (same day)
         if (schedule.lastRunAt) {
             const lastRun = moment(schedule.lastRunAt).tz(schedule.timezone);
-            if (lastRun.isSame(now, "day")) continue;
+            if (lastRun.isSame(now, "day")) {
+                console.log("⏭️ Skipped (already ran today)");
+                continue;
+            }
         }
 
-        // Alternate day logic
+        // 🔁 Alternate day logic
         if (schedule.frequency === "Alternate" && schedule.lastRunAt) {
-            const diff = now.diff(moment(schedule.lastRunAt), "days");
-            if (diff < 2) continue;
+            const diffDays = now.diff(
+                moment(schedule.lastRunAt).tz(schedule.timezone),
+                "days"
+            );
+            if (diffDays < 2) continue;
         }
 
         console.log("🚀 Running MAIN schedule:", schedule._id);
         await runSchedule(schedule);
     }
 });
+
