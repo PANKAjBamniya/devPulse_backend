@@ -2,8 +2,8 @@ const cron = require("node-cron");
 const Schedule = require("../models/schedule.model");
 const { runSchedule } = require("../controller/schedule.controller");
 
-cron.schedule("*/30 * * * *", async () => {
-    console.log(" Test Cron running (every 30 min)...");
+cron.schedule("*/3 * * * *", async () => {
+    console.log(" Test Cron running (every 3 min)...");
 
     // Pick only test schedules
     const schedules = await Schedule.find({

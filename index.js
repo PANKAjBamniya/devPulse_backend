@@ -25,8 +25,8 @@ app.get('/', (req, res) => {
     res.send('Backend working');
 });
 
-require("./cron/test.cron")
-// require("./cron/schedule.cron")
+// require("./cron/test.cron")
+require("./cron/schedule.cron")
 
 // auth routes
 app.use('/api/linkedin', require("./routes/auth.route"));

@@ -22,7 +22,6 @@ const getAccessToken = async (code) => {
     }
 
     const accessToken = await response.json()
-    // console.log(accessToken)
     return accessToken
 }
 
@@ -43,64 +42,130 @@ const getUserData = async (accessToken) => {
     return userData
 }
 
-const linkedInCallback = async (req, res) => {
+
+
+const authenticate = async (req, res, next) => {
     try {
-        const { code } = req.query
-        // console.log(code)
+        const token = req.cookies.token || req.headers.authorization?.replace('Bearer ', '');
 
-        // get access token 
-        const accessToken = await getAccessToken(code)
-
-        // get user data using access token 
-
-        const userData = await getUserData(accessToken.access_token)
-
-        if (!userData) {
-            return res.status(500).json({
-                success: false,
-                error
-            })
+        if (!token) {
+            return res.redirect('/login');
         }
 
-        // check if user registered 
-        let user
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = await User.findById(decoded.userId);
 
-        user = await User.findOne({ email: userData.email })
+        next();
+    } catch (error) {
+        res.redirect('/login');
+    }
+};
+
+const linkedInCallback = async (req, res) => {
+    try {
+        const { code } = req.query;
+
+        if (!code) {
+            return res.status(400).json({
+                success: false,
+                error: "Authorization code missing",
+            });
+        }
+
+        // 1️⃣ Get access token
+        const tokenData = await getAccessToken(code);
+
+        if (!tokenData?.access_token) {
+            return res.status(500).json({
+                success: false,
+                error: "Failed to get access token",
+            });
+        }
+
+        console.log('✅ Access token received');
+
+        // 2️⃣ Get LinkedIn user data
+        const userData = await getUserData(tokenData.access_token);
+
+        if (!userData?.email) {
+            return res.status(500).json({
+                success: false,
+                error: "Failed to fetch LinkedIn user data",
+            });
+        }
+
+        console.log('📝 LinkedIn user data:', userData);
+
+        // 🔥 CRITICAL: Extract the LinkedIn ID (sub)
+        const linkedInId = userData.sub;
+
+        if (!linkedInId) {
+            return res.status(500).json({
+                success: false,
+                error: "LinkedIn ID (sub) not found in user data",
+            });
+        }
+
+        // 🔥 CRITICAL: Create the author URN
+        const authorUrn = `urn:li:person:${linkedInId}`;
+
+        console.log('🔑 LinkedIn ID:', linkedInId);
+        console.log('🎯 Author URN:', authorUrn);
+
+        // 3️⃣ Find or create user
+        let user = await User.findOne({ email: userData.email });
 
         if (!user) {
             user = new User({
                 name: userData.name,
                 email: userData.email,
                 phone: userData?.phone,
-                avatar: userData?.picture
-            })
-            await user.save()
+                avatar: userData?.picture,
+            });
         }
 
+        // 4️⃣ Save LinkedIn credentials INCLUDING authorUrn
+        user.linkedin = {
+            accessToken: tokenData.access_token,
+            expiresAt: new Date(Date.now() + tokenData.expires_in * 1000),
+            authorUrn: authorUrn,
+            linkedInId: linkedInId,
+            connectedAt: new Date()
+        };
 
+        await user.save();
+
+        // 5️⃣ Generate JWT
         const token = jwt.sign(
             {
-                id: user._id,
+                userId: user._id,
                 name: user.name,
                 email: user.email,
-                avatar: user.avatar
-            }
-            , process.env.JWT_SECRET)
+                avatar: user.avatar,
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: "7d" }
+        );
 
+        // 6️⃣ Set cookie
         res.cookie("token", token, {
             httpOnly: true,
-            secure: false,
+            secure: false, // true in production
             sameSite: "lax",
         });
-        res.redirect('http://localhost:5173')
+
+        // 7️⃣ Redirect to frontend
+        res.redirect("http://localhost:5173?linkedin=connected");
 
     } catch (error) {
+        console.error("❌ LinkedIn Callback Error:", error);
         res.status(500).json({
             success: false,
-            error
-        })
+            error: error.message,
+        });
     }
-}
+};
+
 
 const getUser = async (req, res) => {
     try {
@@ -112,7 +177,10 @@ const getUser = async (req, res) => {
             });
         }
 
-        const user = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        // Get full user data from database including LinkedIn info
+        const user = await User.findById(decoded.userId).select('-password');
 
         res.status(200).json({
             success: true,
@@ -127,4 +195,22 @@ const getUser = async (req, res) => {
 };
 
 
-module.exports = { linkedInCallback, getUser }
+const logout = (req, res) => {
+    res.clearCookie("token", {
+        httpOnly: true,
+        secure: false,   // localhost
+        sameSite: "lax",
+    });
+
+    res.status(200).json({
+        success: true,
+        message: "Logged out successfully",
+    });
+};
+
+
+module.exports = {
+    linkedInCallback,
+    getUser,
+    logout,
+};

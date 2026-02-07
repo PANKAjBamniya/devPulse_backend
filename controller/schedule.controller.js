@@ -1,9 +1,8 @@
-// const { postToLinkedIn } = require("../utils/linkedin");
-// const { generateLinkedInPost } = require("../utils/openai");
 const Schedule = require("../models/schedule.model");
 const Post = require("../models/post.model");
 const { generateLinkedInPost } = require("../utils/gemini");
 const { postToLinkedIn } = require("../utils/linkedin");
+const User = require("../models/user.model")
 
 
 const createSchedule = async (req, res, next) => {
@@ -144,62 +143,96 @@ const runSchedule = async (schedule) => {
     let post;
 
     try {
-        const categoryName =
-            schedule.categories?.[0]?.name;
+        console.log('🔍 Running schedule for user:', schedule.user);
+
+        const user = await User.findById(schedule.user);
+
+        // 🔥 DEBUG: Log the entire user object
+        console.log('👤 User found:', !!user);
+        console.log('📱 User LinkedIn object:', user?.linkedin);
+        console.log('🔑 Has accessToken:', !!user?.linkedin?.accessToken);
+        console.log('🎯 Has authorUrn:', !!user?.linkedin?.authorUrn);
+
+        if (!user) {
+            throw new Error("User not found");
+        }
+
+        if (!user.linkedin) {
+            throw new Error("LinkedIn not connected for this user");
+        }
+
+        if (!user.linkedin.accessToken) {
+            throw new Error("LinkedIn access token missing");
+        }
+
+        if (!user.linkedin.authorUrn) {
+            throw new Error("LinkedIn authorUrn missing");
+        }
+
+        const { accessToken, expiresAt, authorUrn } = user.linkedin;
+
+        console.log('✅ LinkedIn data retrieved:', {
+            hasToken: !!accessToken,
+            hasUrn: !!authorUrn,
+            expiresAt,
+            isExpired: Date.now() > new Date(expiresAt).getTime()
+        });
+
+        if (Date.now() > new Date(expiresAt).getTime()) {
+            throw new Error("LinkedIn token expired – reconnect required");
+        }
+
+        const categoryName = schedule.categories?.[0]?.name;
 
         const prompt = `
-                    You are generating a DAILY scheduled LinkedIn post.
+            You are generating a DAILY scheduled LinkedIn post.
 
-                    Context:
-                    This post is part of an automated posting system.
+            Context:
+            This post is part of an automated posting system.
 
-                    Category: ${categoryName}
-                    Description: ${schedule.description}
+            Category: ${categoryName}
+            Description: ${schedule.description}
 
-                    Rules:
-                    - Write ONLY ONE practical daily tip strictly related to the category
-                    - Keep it under 120 words
-                    - Include 1 actionable best practice
-                    - Use a friendly but professional tone
-                    - End with 2–3 relevant hashtags
-                    - Do NOT mention announcements, series, or scheduling
-
-                    Write the post now.
-                    `;
+            Rules:
+            - Write ONLY ONE practical daily tip strictly related to the category
+            - Keep it under 120 words
+            - Include 1 actionable best practice
+            - Use a friendly but professional tone
+            - End with 2–3 relevant hashtags
+            - Do NOT mention announcements, series, or scheduling
+        `;
 
         const content = await generateLinkedInPost(prompt);
 
-        // Safety check
-        if (!content || content.trim().length === 0) {
+        if (!content || !content.trim()) {
             throw new Error("GeminiAI returned empty content");
         }
 
-        // Create In DB
         post = await Post.create({
             user: schedule.user,
             category: schedule.categories[0],
-            content: content,
+            content,
             status: "generated",
             scheduledAt: new Date(),
         });
 
-        //  (OPTIONAL) LinkedIn post — disabled in test
+        console.log("📤 Posting to LinkedIn...");
+        console.log("Author URN:", authorUrn);
 
         await postToLinkedIn({
             text: content,
-            accessToken: schedule.linkedinAccessToken,
-            authorUrn: schedule.authorUrn,
+            accessToken,
+            authorUrn,
         });
 
         post.status = "posted";
         post.postedAt = new Date();
         await post.save();
 
-        // Update schedule 
         schedule.lastRunAt = new Date();
         await schedule.save();
 
-        console.log("✅ Test Post saved:", post._id);
+        console.log("✅ LinkedIn post published:", post._id);
 
     } catch (error) {
         console.error("❌ Post failed:", error.message);

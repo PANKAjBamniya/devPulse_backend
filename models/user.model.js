@@ -20,6 +20,28 @@ const UserSchema = new mongoose.Schema(
         avatar: {
             type: String,
         },
+        linkedin: {
+            accessToken: {
+                type: String,
+                required: false
+            },
+            expiresAt: {
+                type: Date,
+                required: false
+            },
+            authorUrn: {
+                type: String,
+                required: false
+            },
+            linkedInId: {
+                type: String,
+                required: false
+            },
+            connectedAt: {
+                type: Date,
+                required: false
+            }
+        }
     },
     { timestamps: true }
 );
