@@ -29,7 +29,7 @@ app.get('/', (req, res) => {
 });
 
 // require("./cron/test.cron")
-require("./cron/schedule.cron")
+// require("./cron/schedule.cron")
 
 // auth routes
 app.use('/api/linkedin', require("./routes/auth.route"));

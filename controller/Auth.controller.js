@@ -94,8 +94,6 @@ const linkedInCallback = async (req, res) => {
             });
         }
 
-        console.log('📝 LinkedIn user data:', userData);
-
         // 🔥 CRITICAL: Extract the LinkedIn ID (sub)
         const linkedInId = userData.sub;
 
@@ -109,8 +107,6 @@ const linkedInCallback = async (req, res) => {
         // 🔥 CRITICAL: Create the author URN
         const authorUrn = `urn:li:person:${linkedInId}`;
 
-        console.log('🔑 LinkedIn ID:', linkedInId);
-        console.log('🎯 Author URN:', authorUrn);
 
         // 3️⃣ Find or create user
         let user = await User.findOne({ email: userData.email });
