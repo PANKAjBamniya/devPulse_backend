@@ -1,11 +1,13 @@
 const express = require("express");
-const { linkedInCallback, getUser, logout } = require("../controller/Auth.controller");
+const { register, login, getMe } = require("../controller/Auth.controller");
+const { protect } = require("../middlewares/auth.middleware");
 
 const router = express.Router();
 
-router.get("/callback", linkedInCallback);
-router.get("/get-user", getUser);
-router.post("/logout", logout);
+// login And regiser Routes
+router.post("/register", register);
+router.post("/login", login);
+router.get("/me", protect, getMe)
 
 
 module.exports = router;

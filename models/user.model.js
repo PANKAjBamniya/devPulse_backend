@@ -1,51 +1,27 @@
 const mongoose = require("mongoose");
 
-const UserSchema = new mongoose.Schema(
+const userSchema = new mongoose.Schema(
     {
-        name: {
-            type: String,
-            required: true,
-            trim: true,
-        },
+        name: String,
         email: {
             type: String,
             required: true,
             unique: true,
-            lowercase: true,
-            trim: true,
         },
-        phone: {
-            type: String,
+        password: String,
+        avatar: String,
+        isActive: {
+            type: Boolean,
+            default: true,
         },
-        avatar: {
-            type: String,
-        },
-        linkedin: {
-            accessToken: {
-                type: String,
-                required: false
-            },
-            expiresAt: {
-                type: Date,
-                required: false
-            },
-            authorUrn: {
-                type: String,
-                required: false
-            },
-            linkedInId: {
-                type: String,
-                required: false
-            },
-            connectedAt: {
-                type: Date,
-                required: false
-            }
-        }
     },
     { timestamps: true }
 );
 
-const User = mongoose.model("User", UserSchema, "users");
+userSchema.virtual("socialAccounts", {
+    ref: "SocialAccount",
+    localField: "_id",
+    foreignField: "userId",
+});
 
-module.exports = User;
+module.exports = mongoose.model("User", userSchema);

@@ -10,7 +10,6 @@ const createCategory = async (req, res) => {
             return res.status(400).json({ message: "Category name is required" })
         }
 
-        // prevent duplicate category per user
         const existing = await Category.findOne({
             name,
             createdBy: req.user._id,

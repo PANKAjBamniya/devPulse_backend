@@ -202,18 +202,18 @@ const runSchedule = async (schedule) => {
             scheduledAt: new Date(),
         });
 
-        await postToLinkedIn({
-            text: content,
-            accessToken,
-            authorUrn,
-        });
+        // await postToLinkedIn({
+        //     text: content,
+        //     accessToken,
+        //     authorUrn,
+        // });
 
-        post.status = "posted";
-        post.postedAt = new Date();
-        await post.save();
+        // post.status = "posted";
+        // post.postedAt = new Date();
+        // await post.save();
 
-        schedule.lastRunAt = new Date();
-        await schedule.save();
+        // schedule.lastRunAt = new Date();
+        // await schedule.save();
 
         console.log("✅ LinkedIn post published:");
 

@@ -31,8 +31,11 @@ app.get('/', (req, res) => {
 // require("./cron/test.cron")
 // require("./cron/schedule.cron")
 
-// auth routes
-app.use('/api/linkedin', require("./routes/auth.route"));
+// Linkedin auth routes
+app.use('/api/auth', require("./routes/auth.route"));
+
+// Linkedin auth routes
+app.use('/api/linkedin', require("./routes/linkedin.route"));
 
 // category routers
 app.use('/api/category', require("./routes/category.route"))
@@ -42,6 +45,9 @@ app.use('/api/schedule', require("./routes/schedule.route"))
 
 // Post
 app.use("/api/posts", require("./routes/post.route"))
+
+
+app.use(errorHandler);
 
 app.listen(port, () => {
     console.log('Server running on port:', port);
