@@ -2,6 +2,7 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const connectDB = require('./config/db');
+const session = require("express-session");
 const errorHandler = require('./middlewares/errorHandler');
 require('dotenv').config();
 
@@ -34,8 +35,6 @@ app.use(
 );
 
 
-import session from "express-session";
-
 app.use(
     session({
         secret: "supersecretkey",
@@ -44,8 +43,6 @@ app.use(
         cookie: { secure: false },
     })
 );
-
-
 
 
 // test route
