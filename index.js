@@ -15,10 +15,14 @@ connectDB();
 
 app.use(
     cors({
-        origin: "http://localhost:5173",
+        origin: [
+            "http://localhost:5173",
+            "https://dev-pulse-frontend-flax.vercel.app",
+        ],
         credentials: true,
     })
 );
+
 
 // test route
 app.get('/', (req, res) => {
@@ -36,6 +40,12 @@ app.use('/api/auth', require("./routes/auth.route"));
 
 // Linkedin auth routes
 app.use('/api/linkedin', require("./routes/linkedin.route"));
+
+// Linkedin auth routes
+app.use('/api/twitter', require("./routes/twitter.route"));
+
+// Face-book route
+app.use('/api/facebook', require("./routes/category.route"))
 
 // category routers
 app.use('/api/category', require("./routes/category.route"))

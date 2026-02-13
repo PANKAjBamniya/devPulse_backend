@@ -57,9 +57,6 @@ const connectLinkedIn = async (req, res) => {
     try {
         const { code, state } = req.query;
 
-        console.log("➡️ OAuth callback hit");
-        console.log("📦 Query params:", { code, state });
-
         if (!code || !state) {
             throw new Error("Missing OAuth params");
         }
@@ -82,10 +79,8 @@ const connectLinkedIn = async (req, res) => {
 
         console.log("✅ OAuth userId:", userId);
 
-        // 🔑 TOKEN
         const tokenData = await getAccessToken(code);
 
-        // 👤 PROFILE
         const profile = await getLinkedInProfile(tokenData.access_token);
 
         const platformUserId = profile.sub;
@@ -122,6 +117,7 @@ const connectLinkedIn = async (req, res) => {
         });
 
         await socialAccount.save();
+
         console.log("✅ SocialAccount saved successfully");
 
         res.redirect("http://localhost:5173/platforms");

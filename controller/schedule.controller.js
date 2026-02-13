@@ -3,114 +3,147 @@ const Post = require("../models/post.model");
 const { generateLinkedInPost } = require("../utils/gemini");
 const { postToLinkedIn } = require("../utils/linkedin");
 const User = require("../models/user.model")
+const SocialAccount = require("../models/socialAccountModel")
 
 
 const createSchedule = async (req, res, next) => {
     try {
-        const userId = req.user._id
-        const { time, frequency, timezone, categories, description } = req.body
+        const userId = req.user._id;
 
-        // validation
-        if (
-            !time ||
-            !time.hour ||
-            !time.minute ||
-            !time.period ||
-            !categories ||
-            categories.length === 0
-        ) {
+        const {
+            socialAccount,
+            time,          // "09:15"
+            frequency,
+            days,
+            timezone,
+            categories,
+            description,
+        } = req.body;
+
+        if (!time || !categories?.length || !socialAccount) {
             return res.status(400).json({
                 success: false,
-                message: "Time and at least one category are required",
-            })
+                message: "Time, social account and at least one category required",
+            });
         }
 
-        // prevent duplicate schedule
-        const existing = await Schedule.findOne({ user: userId })
+        const existing = await Schedule.findOne({
+            user: userId,
+            socialAccount,
+        });
+
         if (existing) {
             return res.status(409).json({
                 success: false,
-                message: "Schedule already exists. Use update instead.",
-            })
+                message: "Schedule already exists for this platform",
+            });
         }
 
         const schedule = await Schedule.create({
             user: userId,
+            socialAccount,
             time,
             frequency,
+            days,
             timezone,
             categories,
             description,
-        })
+        });
 
         res.status(201).json({
             success: true,
-            message: "Schedule created successfully",
+            message: "Schedule created",
             data: schedule,
-        })
+        });
+
     } catch (error) {
-        next(error)
+        next(error);
     }
-}
+};
 
 
 const updateSchedule = async (req, res, next) => {
     try {
-        const userId = req.user._id
-        const { time, frequency, timezone, categories, description, isActive } =
-            req.body
+        const userId = req.user._id;
+        const { socialAccount } = req.body;
 
-        const schedule = await Schedule.findOne({ user: userId })
+        const schedule = await Schedule.findOne({
+            user: userId,
+            socialAccount,
+        });
 
         if (!schedule) {
             return res.status(404).json({
                 success: false,
                 message: "Schedule not found",
-            })
+            });
         }
 
-        if (time) schedule.time = time
-        if (frequency) schedule.frequency = frequency
-        if (timezone) schedule.timezone = timezone
-        if (categories && categories.length > 0)
-            schedule.categories = categories
-        if (description !== undefined) schedule.description = description
-        if (typeof isActive === "boolean") schedule.isActive = isActive
+        Object.assign(schedule, req.body);
 
-        await schedule.save()
+        await schedule.save();
 
         res.status(200).json({
             success: true,
-            message: "Schedule updated successfully",
+            message: "Schedule updated",
             data: schedule,
-        })
+        });
+
     } catch (error) {
-        next(error)
+        next(error);
     }
-}
+};
+
 
 
 
 const getMySchedule = async (req, res, next) => {
     try {
-        const schedule = await Schedule.findOne({ user: req.user._id })
-            .populate("categories", "name")
+        const id = req.params.socialAccountId;
+
+        const schedule = await Schedule.findOne({
+            _id: id,
+            user: req.user._id
+        })
+            .populate("socialAccount");
+
 
         if (!schedule) {
             return res.status(404).json({
                 success: false,
                 message: "Schedule not found",
-            })
+            });
         }
 
         res.status(200).json({
             success: true,
             data: schedule,
-        })
+        });
+
     } catch (error) {
-        next(error)
+        next(error);
     }
-}
+};
+
+
+const getMyAllSchedules = async (req, res, next) => {
+    try {
+        const schedules = await Schedule.find({
+            user: req.user._id,
+        })
+            .populate("categories", "name")
+            .populate("socialAccount");
+
+        res.status(200).json({
+            success: true,
+            data: schedules,
+        });
+
+    } catch (error) {
+        next(error);
+    }
+};
+
 
 const toggleSchedule = async (req, res, next) => {
     try {
@@ -138,34 +171,21 @@ const toggleSchedule = async (req, res, next) => {
 
 
 // RunSchedule 
-
 const runSchedule = async (schedule) => {
     let post;
 
     try {
+        const socialAccount = await SocialAccount
+            .findById(schedule.socialAccount)
+            .select("+accessToken");
 
-        const user = await User.findById(schedule.user);
-
-        if (!user) {
-            throw new Error("User not found");
+        if (!socialAccount || !socialAccount.isConnected) {
+            console.log("❌ Social account not connected");
+            return;
         }
 
-        if (!user.linkedin) {
-            throw new Error("LinkedIn not connected for this user");
-        }
-
-        if (!user.linkedin.accessToken) {
-            throw new Error("LinkedIn access token missing");
-        }
-
-        if (!user.linkedin.authorUrn) {
-            throw new Error("LinkedIn authorUrn missing");
-        }
-
-        const { accessToken, expiresAt, authorUrn } = user.linkedin;
-
-        if (Date.now() > new Date(expiresAt).getTime()) {
-            throw new Error("LinkedIn token expired – reconnect required");
+        if (!socialAccount.accessToken) {
+            throw new Error("Access token missing");
         }
 
         const categoryName = schedule.categories?.[0]?.name;
@@ -190,8 +210,8 @@ const runSchedule = async (schedule) => {
 
         const content = await generateLinkedInPost(prompt);
 
-        if (!content || !content.trim()) {
-            throw new Error("GeminiAI returned empty content");
+        if (!content?.trim()) {
+            throw new Error("AI returned empty content");
         }
 
         post = await Post.create({
@@ -202,20 +222,20 @@ const runSchedule = async (schedule) => {
             scheduledAt: new Date(),
         });
 
-        // await postToLinkedIn({
-        //     text: content,
-        //     accessToken,
-        //     authorUrn,
-        // });
+        await postToLinkedIn({
+            text: content,
+            accessToken: socialAccount.accessToken,
+            authorUrn: `urn:li:person:${socialAccount.platformUserId}`
+        });
 
-        // post.status = "posted";
-        // post.postedAt = new Date();
-        // await post.save();
+        post.status = "posted";
+        post.postedAt = new Date();
+        await post.save();
 
-        // schedule.lastRunAt = new Date();
-        // await schedule.save();
+        schedule.lastRunAt = new Date();
+        await schedule.save();
 
-        console.log("✅ LinkedIn post published:");
+        console.log("✅ LinkedIn post published");
 
     } catch (error) {
         console.error("❌ Post failed:", error.message);
@@ -228,4 +248,5 @@ const runSchedule = async (schedule) => {
     }
 };
 
-module.exports = { createSchedule, getMySchedule, toggleSchedule, updateSchedule, runSchedule }
+
+module.exports = { createSchedule, getMySchedule, toggleSchedule, updateSchedule, runSchedule, getMyAllSchedules }

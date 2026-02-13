@@ -8,26 +8,28 @@ const ScheduleSchema = new mongoose.Schema(
             required: true,
         },
 
-        time: {
-            hour: {
-                type: String, // "09"
-                required: true,
-            },
-            minute: {
-                type: String, // "15"
-                required: true,
-            },
-            period: {
-                type: String, // "AM" | "PM"
-                enum: ["AM", "PM"],
-                required: true,
-            },
+        socialAccount: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "SocialAccount",
+            required: true,
         },
 
         frequency: {
             type: String,
-            enum: ["Daily", "Alternate"],
-            default: "Daily",
+            enum: ["daily", "weekly", "alternate"],
+            default: "daily",
+        },
+
+        days: [
+            {
+                type: String,
+                enum: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+            },
+        ],
+
+        time: {
+            type: String,
+            required: true,
         },
 
         timezone: {
@@ -39,7 +41,6 @@ const ScheduleSchema = new mongoose.Schema(
             {
                 type: mongoose.Schema.Types.ObjectId,
                 ref: "Category",
-                required: true,
             },
         ],
 
@@ -53,9 +54,9 @@ const ScheduleSchema = new mongoose.Schema(
             default: true,
         },
 
-        lastRunAt: {
-            type: Date,
-        },
+        lastRunAt: Date,
+
+        nextRunAt: Date,
     },
     {
         timestamps: true,
