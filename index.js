@@ -34,6 +34,19 @@ app.use(
 );
 
 
+import session from "express-session";
+
+app.use(
+    session({
+        secret: "supersecretkey",
+        resave: false,
+        saveUninitialized: true,
+        cookie: { secure: false },
+    })
+);
+
+
+
 
 // test route
 app.get('/', (req, res) => {
