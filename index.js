@@ -13,15 +13,26 @@ app.use(express.json());
 
 connectDB();
 
+const allowedOrigins = [
+    "http://localhost:5173",
+    "https://dev-pulse-frontend-flax.vercel.app",
+];
+
 app.use(
     cors({
-        origin: [
-            "http://localhost:5173",
-            "https://dev-pulse-frontend-flax.vercel.app",
-        ],
+        origin: function (origin, callback) {
+            if (!origin) return callback(null, true);
+
+            if (allowedOrigins.includes(origin)) {
+                callback(null, true);
+            } else {
+                callback(new Error("Not allowed by CORS: " + origin));
+            }
+        },
         credentials: true,
     })
 );
+
 
 
 // test route
