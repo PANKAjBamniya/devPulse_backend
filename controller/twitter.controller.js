@@ -2,32 +2,37 @@ const axios = require("axios")
 const crypto = require("crypto");
 
 const twitterCallback = async (req, res) => {
-    const { code } = req.query;
+    try {
+        const { code } = req.query;
 
-    console.log("TWITTER_CLIENT_ID:", process.env.TWITTER_CLIENT_ID);
-    console.log("TWITTER_REDIRECT_URI:", process.env.TWITTER_REDIRECT_URI);
-
-    console.log(code)
-
-    const tokenRes = await axios.post(
-        "https://api.twitter.com/2/oauth2/token",
-        new URLSearchParams({
-            code,
-            grant_type: "authorization_code",
-            client_id: process.env.TWITTER_CLIENT_ID,
-            redirect_uri: process.env.TWITTER_REDIRECT_URI,
-            code_verifier: req.session.codeVerifier,
-        }),
-        {
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        if (!req.session.codeVerifier) {
+            return res.status(400).json({ error: "Missing code_verifier in session" });
         }
-    );
 
-    const { access_token, refresh_token } = tokenRes.data;
-    console.log(access_token, refresh_token)
+        const tokenRes = await axios.post(
+            "https://api.twitter.com/2/oauth2/token",
+            new URLSearchParams({
+                code,
+                grant_type: "authorization_code",
+                client_id: process.env.TWITTER_CLIENT_ID,
+                redirect_uri: process.env.TWITTER_REDIRECT_URI,
+                code_verifier: req.session.codeVerifier,
+            }),
+            {
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            }
+        );
 
-    res.redirect("http://localhost:5173/plateforms?twitter=connected");
+        const { access_token } = tokenRes.data;
+
+        res.redirect("https://dev-pulse-frontend-flax.vercel.app/plateforms?twitter=connected");
+
+    } catch (error) {
+        console.error("Twitter Callback Error:", error.response?.data || error.message);
+        res.status(500).json({ error: "Twitter OAuth Failed" });
+    }
 };
+
 
 
 const twitterLogin = async (req, res) => {
